@@ -7,7 +7,8 @@ from google import genai
 from google.genai import types
 import time
 import logging
-from datetime import datetime
+#from datetime import datetime
+import datetime
 
 from busrestfuldataV2 import ContactPerson,Company
 import requests
@@ -20,8 +21,10 @@ def setup_logging():
         os.makedirs('logs')
     
     # 設置日誌檔案名稱（包含日期）
-    log_filename = f'logs/business_card_system_{datetime.now().strftime("%Y%m%d")}.log'
-    
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_filename = f'logs/business_card_system_{datetime.datetime.now().strftime("%Y%m%d")}.log'
+
+
     # 配置日誌系統
     logging.basicConfig(
         level=logging.INFO,
@@ -65,9 +68,9 @@ def save_uploaded_file(uploaded_file):
 
 # Gemini API 設置
 #GOOGLE_API_KEY = "YOUR_API_KEY"  # 請替換成你的 API 
-#api_key = "xxxxxxxx"
+#api_key = "AIzaSyD1GjdcUrcYeL-KdR7gZyjxlO0d9OGO2OA"
 
-GOOGLE_API_KEY = "xxxxxxxx"
+GOOGLE_API_KEY = "AIzaSyDf9CJRd6CTp0qdjV6MvXPgFUhT2BQJ18s"
 
 MODEL_ID = "gemini-2.0-flash"
 
@@ -246,11 +249,11 @@ if choice == "名片識別":
                                 
                                 # 
                                 
-                                if st.form_submit_button("儲存資料"):
+                                if st.button("儲存資料"):
                                     
                                     try:
                 
-                                        logger.info("Starting SQL transfer process")
+                                        #\logger.info("Starting SQL transfer process")
 
                                         # Example usage with the provided data
                                         contact_person_data = ContactPerson(
@@ -269,7 +272,9 @@ if choice == "名片識別":
                                             #contact_persons=[contact_person_data],
                                         )
 
-                                        
+                                        print(contact_person_data)
+                                        print(company_data)
+
                                         #new
                                         #busload.set_image_from_blob(image_stream)
                                         # 傳送到伺服器
@@ -302,7 +307,7 @@ if choice == "名片識別":
                                         files.append(("imageBase64", (file_path, open(file_path, "rb"), "image/jpeg")))
 
 
-                                        logger.info(f"Sending data to server: {server_url}")
+                                        #logger.info(f"Sending data to server: {server_url}")
 
                                         response = requests.post(server_url, files={**form_data, **dict(files)})
 
@@ -310,42 +315,7 @@ if choice == "名片識別":
                                         
                                         #new
                                         
-                                        # print(busload.image)
-                                        # print("busload.image")
-                                        # print(type(busload.image))
-                                        # print("type busload.image")
-
-                                        # image_data = base64.b64decode(busload.image)
-                                        # image2 = Image.open(io.BytesIO(image_data))
-                                        # image2.save('20250107.jpg')
-
-
-                                        
-                                        # img.save('20250107.jpg')
-
-                                    
-                                        # # 将对象写入文件
-                                        # with open("20250106bus_class.pkl", "wb") as file:
-                                        #     pickle.dump(busload, file)
-                                        
-                                        
-                                    # 保存对象到文件
-                                        # with open("20250206businesscard.json", "w") as file:
-                                        #     #old
-                                        #     #json.dump(busload.to_dict(), file)
-                                        #     # new version
-                                        #     #json.dump(contact_person_data.to_dict(), file)
-                                        #     json.dump(company_data.to_dict(), file)
-                                            
-                                        # print("对象已保存到 person.json 文件。")
-
-                                        #old
-                                        #response = busload.send_to_server(server_url)
-                                        #new version
-                                        #response = contact_person_data.send_to_server(server_url)
-                                        #response = company_data.send_to_server(server_url)
-
-
+                                       
                                         # response dic
                                         print("busloadsexxxx")
                                         print(response.text)
@@ -358,29 +328,22 @@ if choice == "名片識別":
                                         #把資料重組成json格式
                                         response = json.loads(s)
                                         
-                                        logger.info(f"Sending data to server: {server_url}")
+                                        #logger.info(f"Sending data to server: {server_url}")
                                     
                                         # 顯示伺服器回應
                                         if isinstance(response, dict) and response.get("message") == "Success!":
                                             print("Server Response (200 OK):", response)
-                                            logger.info("Data successfully saved to server")
+                                            #logger.info("Data successfully saved to server")
 
                                         elif response.get("error"):
                                             print("Error:", response["error"])
                                             #logger.error(f"Server error occurred: {response["error"]}")
-                                            logger.error(f"Server error occurred: {response.get('error', 'Unknown error')}")
+                                            #logger.error(f"Server error occurred: {response.get('error', 'Unknown error')}")
                                         else:
                                             print("Unexpected Response:", response)
 
                                         # # 顯示伺服器回應
-                                        # if isinstance(response, dict) and response.get("status_code") == 200:
-                                        #     print("Server Response (200 OK):", response)
-                                        # elif response.get("error"):
-                                        #     print("Error:", response["error"])
-                                        # else:
-                                        #     print("Unexpected Response:", response)
-
-
+                                        
 
                                         
                                         st.success("Data saved successfully!")
@@ -439,7 +402,7 @@ elif choice == "歷史記錄":
 
 # 頁面底部
 st.markdown("---")
-st.markdown("### �� 使用說明")
+st.markdown("### 使用說明")
 st.markdown("""
 - 上傳名片圖片進行自動識別
 - 識別結果可以直接編輯
@@ -459,3 +422,65 @@ def handle_exceptions(func):
 
 # 應用程式啟動日誌
 logger.info("名片識別系統啟動完成")
+
+def save_to_server(data, file_path):
+    try:
+        # 建立 ContactPerson 物件
+        contact_person = ContactPerson(
+            name=data.get('name', ''),
+            email=data.get('email', ''),
+            landline_number=data.get('telephone', ''),
+            cellphone_number=data.get('mobile', ''),
+            address=data.get('address', '')
+        )
+
+        # 建立 Company 物件
+        company = Company(
+            name=data.get('company_name', ''),
+            tax=data.get('fax', ''),
+            tax_id_number=data.get('business_no', ''),
+            trade_method="Create"
+        )
+
+        # 設定伺服器 URL
+        server_url = "http://172.16.11.41:3333/api/business-partner"
+        
+        # 準備表單資料
+        form_data = {
+            "data": (None, json.dumps(company.to_dict()), "application/json"),
+            "contactPersons": (None, json.dumps([contact_person.to_dict()]), "application/json")
+        }
+
+        # 處理檔案上傳
+        with open(file_path, 'rb') as f:
+            files = {
+                "imageBase64": (os.path.basename(file_path), f, "image/jpeg")
+            }
+            
+            # 合併表單資料和檔案
+            all_files = {**form_data, **files}
+            
+            # 發送請求
+            response = requests.post(server_url, files=all_files)
+
+        # 處理回應
+        if response.status_code == 200:
+            try:
+                response_data = response.json()
+                if isinstance(response_data, dict) and response_data.get("message") == "Success!":
+                    st.success("資料成功儲存到伺服器！")
+                    return True
+                else:
+                    st.error(f"伺服器回應異常：{response_data}")
+                    return False
+            except json.JSONDecodeError:
+                st.error("伺服器回應格式錯誤")
+                return False
+        else:
+            st.error(f"伺服器錯誤：{response.status_code} - {response.text}")
+            return False
+
+    except Exception as e:
+        st.error(f"發生錯誤：{str(e)}")
+        logging.error(f"保存數據失敗: {str(e)}")
+        return False
