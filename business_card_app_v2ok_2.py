@@ -9,10 +9,6 @@ import time
 import logging
 from datetime import datetime
 
-
-from busrestfuldataV2 import ContactPerson,Company
-import requests
-
 # 設置日誌系統
 def setup_logging():
     if not os.path.exists('logs'):
@@ -32,39 +28,8 @@ def setup_logging():
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# 定義儲存圖片的資料夾（相對路徑）
-UPLOAD_FOLDER = "uploads"
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-def save_uploaded_file(uploaded_file):
-    try:
-        # 生成唯一的檔案名稱（使用時間戳）
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_extension = uploaded_file.name.split('.')[-1]
-        file_name = f"image_{timestamp}.{file_extension}"
-        
-        # 建立儲存路徑
-        file_path = os.path.join(UPLOAD_FOLDER, file_name)
-        
-        # 開啟圖片並調整大小
-        image = Image.open(uploaded_file)
-        
-        # 設定最大尺寸
-        max_size = (800, 800)
-        image.thumbnail(max_size, Image.Resampling.LANCZOS)
-        
-        # 儲存調整後的圖片
-        image.save(file_path, quality=85, optimize=True)
-            
-        return file_path
-    except Exception as e:
-        st.error(f"儲存檔案時發生錯誤: {e}")
-        return None
-
-
 # Gemini API 設置
-GOOGLE_API_KEY = "XXXXXXXXXXXXXXXXXXXXX"
+GOOGLE_API_KEY = "xxx"
 
 MODEL_ID = "gemini-2.0-flash"
 
@@ -77,13 +42,14 @@ class BusinessCardAnalyzer:
         except Exception as e:
             logger.error(f"Gemini API 客戶端初始化失敗: {str(e)}")
             raise
+    
     def analyze_image(self, img, max_retries=5, retry_delay=1):
         logger.info("開始分析名片圖片")
         prompt = """
         請仔細分析這張名片圖片，並提取以下資訊（以JSON格式回傳）：
 
         請注意以下重點：
-        1. 若遇到多個電話號碼，請依照格式（如：+886-、02-、0800-）判斷是電話其中電話、分機、#都是屬於電話把它都列在電話、手機或傳真
+        1. 若遇到多個電話號碼，請依照格式（如：+886-、02-、0800-）判斷是電話、手機或傳真
         2. 地址通常會包含縣市、路名、樓層等資訊
         3. 統一編號（統編）通常為8位數字
         4. 電子郵件通常包含 @ 符號
@@ -142,41 +108,6 @@ class BusinessCardAnalyzer:
                     return None
         logger.error("已達最大重試次數，分析失敗")
         return None
-    
-    # def analyze_image(self, img, max_retries=5, retry_delay=1):
-    #     logger.info("開始分析名片圖片")
-    #     prompt = """
-    #     請仔細分析這張名片圖片，並提取以下資訊（以JSON格式回傳）：
-    #     [保持原有的 prompt 內容不變]
-    #     """
-    #     for attempt in range(max_retries):
-    #         try:
-    #             logger.debug(f"嘗試第 {attempt + 1} 次分析")
-    #             image_response = self.client.models.generate_content(
-    #                 model=MODEL_ID,
-    #                 contents=[img, prompt],
-    #                 config=genai.types.GenerateContentConfig(temperature=0.5)
-    #             )
-    #             response_text = image_response.text
-    #             json_start = response_text.find('{')
-    #             json_end = response_text.rfind('}') + 1
-    #             if json_start >= 0 and json_end > json_start:
-    #                 json_str = response_text[json_start:json_end]
-    #                 result = json.loads(json_str)
-    #                 logger.info("名片分析成功")
-    #                 return result
-    #             logger.warning("無法在回應中找到有效的 JSON")
-    #             return None
-    #         except Exception as e:
-    #             if "429" in str(e):
-    #                 logger.warning(f"遇到速率限制，等待 {retry_delay} 秒後重試")
-    #                 time.sleep(retry_delay)
-    #                 retry_delay *= 2
-    #             else:
-    #                 logger.error(f"分析過程發生錯誤: {str(e)}")
-    #                 return None
-    #     logger.error("已達最大重試次數，分析失敗")
-    #     return None
 
 # Streamlit 初始化
 st.set_page_config(
@@ -200,9 +131,7 @@ analyzer = init_analyzer()
 # 側邊欄
 with st.sidebar:
     st.title("名片識別系統")
-    #choice = st.radio("功能選擇", ["名片識別", "歷史記錄"])
-    choice = st.radio("功能選擇", ["名片識別"])
-
+    choice = st.radio("功能選擇", ["名片識別", "歷史記錄"])
 
 # 主頁面邏輯
 if choice == "名片識別":
@@ -210,20 +139,7 @@ if choice == "名片識別":
     
     uploaded_file = st.file_uploader("上傳名片圖片", type=['jpg', 'jpeg', 'png'])
     
-    # 當上傳新檔案時，清空之前的識別結果
-    if uploaded_file is not None:
-        if 'last_file' not in st.session_state:
-            st.session_state.last_file = uploaded_file.name
-        elif st.session_state.last_file != uploaded_file.name:
-            # 檔案變更，清空識別結果
-            if 'current_result' in st.session_state:
-                del st.session_state.current_result
-            st.session_state.last_file = uploaded_file.name
-    
     if uploaded_file:
-
-        file_path = save_uploaded_file(uploaded_file)
-
         col1, col2 = st.columns(2)
         with col1:
             image = Image.open(uploaded_file)
@@ -282,74 +198,6 @@ if choice == "名片識別":
                             'image_path': uploaded_file.name
                         }
                         print(save_data)
-
-        # 建立 ContactPerson 物件
-                        contact_person_data = ContactPerson(
-                            name=name,
-                            email=email,
-                            landline_number=phone,
-                            cellphone_number=mobile,
-                            address=address,
-                        )
-
-                        # 建立 Company 物件
-                        company_data = Company(
-                            name=company,
-                            tax=fax,
-                            tax_id_number=tax_id,
-                            trade_method="Create",
-                        )
-
-
-                        logger.info("資料物件建立完成")
-
-                        # 傳送到伺服器
-                        server_url = "http://172.16.11.41:3333/api/business-partner"
-                        
-                        # 準備表單資料
-                        form_data = {
-                            "data": (None, json.dumps(company_data.to_dict()), "application/json"),
-                            "contactPersons": (None, json.dumps([contact_person_data.to_dict()]), "application/json")
-                        }
-
-                        print(form_data)
-                        # 處理檔案上傳
-                        if file_path and os.path.exists(file_path):
-                            with open(file_path, 'rb') as f:
-                                # 再次確認圖片大小
-                                image = Image.open(file_path)
-                                if image.size[0] > 800 or image.size[1] > 800:
-                                    image.thumbnail((800, 800), Image.Resampling.LANCZOS)
-                                    image.save(file_path, quality=85, optimize=True)
-                                
-                                files = {
-                                    "imageBase64": (os.path.basename(file_path), open(file_path, 'rb'), "image/jpeg")
-                                }
-                                
-                                # 合併表單資料和檔案
-                                all_files = {**form_data, **files}
-                                
-                                logger.info("開始發送請求到伺服器")
-                                response = requests.post(server_url, files=all_files)
-        #把資料轉為json
-                        s = response.text
-                        #把資料重組成json格式
-                        response = json.loads(s)
-                        
-                        logger.info(f"Sending data to server: {server_url}")
-                    
-                        # 顯示伺服器回應
-                        if isinstance(response, dict) and response.get("message") == "Success!":
-                            print("Server Response (200 OK):", response)
-                            logger.info("Data successfully saved to server")
-
-                        elif response.get("error"):
-                            print("Error:", response["error"])
-                            #logger.error(f"Server error occurred: {response["error"]}")
-                            logger.error(f"Server error occurred: {response.get('error', 'Unknown error')}")
-                        else:
-                            print("Unexpected Response:", response)
-
                         st.session_state.saved_cards.append(save_data)
                         st.success("資料已成功儲存！")
                         del st.session_state.current_result  # 清除當前結果

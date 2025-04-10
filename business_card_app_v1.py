@@ -7,12 +7,7 @@ from google import genai
 from google.genai import types
 import time
 import logging
-#from datetime import datetime
-import datetime
-
-from busrestfuldataV2 import ContactPerson,Company
-import requests
-
+from datetime import datetime
 
 # 設置日誌系統
 def setup_logging():
@@ -21,10 +16,8 @@ def setup_logging():
         os.makedirs('logs')
     
     # 設置日誌檔案名稱（包含日期）
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_filename = f'logs/business_card_system_{datetime.datetime.now().strftime("%Y%m%d")}.log'
-
-
+    log_filename = f'logs/business_card_system_{datetime.now().strftime("%Y%m%d")}.log'
+    
     # 配置日誌系統
     logging.basicConfig(
         level=logging.INFO,
@@ -42,35 +35,12 @@ def setup_logging():
 # 初始化日誌系統
 setup_logging()
 logger = logging.getLogger(__name__)
-# 定義儲存圖片的資料夾（相對路徑）
-UPLOAD_FOLDER = "uploads"
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-def save_uploaded_file(uploaded_file):
-    try:
-        # 生成唯一的檔案名稱（使用時間戳）
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_extension = uploaded_file.name.split('.')[-1]
-        file_name = f"image_{timestamp}.{file_extension}"
-        
-        # 建立儲存路徑
-        file_path = os.path.join(UPLOAD_FOLDER, file_name)
-        
-        # 儲存檔案
-        with open(file_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-            
-        return file_path
-    except Exception as e:
-        st.error(f"儲存檔案時發生錯誤: {e}")
-        return None
 
 # Gemini API 設置
 #GOOGLE_API_KEY = "YOUR_API_KEY"  # 請替換成你的 API 
 #api_key = "AIzaSyD1GjdcUrcYeL-KdR7gZyjxlO0d9OGO2OA"
 
-GOOGLE_API_KEY = "xxxxx"
+GOOGLE_API_KEY = "xxx"
 
 MODEL_ID = "gemini-2.0-flash"
 
@@ -202,11 +172,8 @@ if choice == "名片識別":
             with col1:
                 image = Image.open(uploaded_file)
                 resized_img = image.resize((800, int(800 * image.size[1] / image.size[0])), Image.Resampling.LANCZOS)
-                st.image(resized_img, caption="上傳的名片", use_container_width=True)
+                st.image(resized_img, caption="上傳的名片", use_column_width=True)
                 logger.debug("圖片顯示成功")
-                #把檔案傳到server
-
-                file_path = save_uploaded_file(uploaded_file)
             
             # 識別按鈕
             if st.button("開始識別"):
@@ -248,105 +215,36 @@ if choice == "名片識別":
                                 print(tax_id+''+other)
                                 
                                 # 
-                                submitted = st.form_submit_button("Submit")
-                                print(submitted)
-
-                                logger.info("st.form_submit_button")
-
-                                if not submitted:
+                                
+                                if st.form_submit_button("儲存資料"):
                                     try:
-                                        logger.info("開始處理資料儲存")
-                                        
-                                        # 建立 ContactPerson 物件
-                                        contact_person_data = ContactPerson(
-                                            name=name,
-                                            email=email,
-                                            landline_number=phone,
-                                            cellphone_number=mobile,
-                                            address=address,
-                                        )
-
-                                        # 建立 Company 物件
-                                        company_data = Company(
-                                            name=company,
-                                            tax=fax,
-                                            tax_id_number=tax_id,
-                                            trade_method="Create",
-                                        )
-
-                                        logger.info("資料物件建立完成")
-
-                                        # 傳送到伺服器
-                                        server_url = "http://172.16.11.41:3333/api/business-partner"
-                                        
-                                        # 準備表單資料
-                                        form_data = {
-                                            "data": (None, json.dumps(company_data.to_dict()), "application/json"),
-                                            "contactPersons": (None, json.dumps([contact_person_data.to_dict()]), "application/json")
+                                        save_data = {
+                                            'name': name,
+                                            'company_name': company,
+                                            'title': title,
+                                            'address': address,
+                                            'phone': phone,
+                                            'mobile': mobile,
+                                            'fax': fax,
+                                            'email': email,
+                                            'website': website,
+                                            'tax_id': tax_id,
+                                            'other_info': other,
+                                            'image_path': uploaded_file.name
                                         }
-                                        
-                                        # 處理檔案上傳
-                                        if file_path and os.path.exists(file_path):
-                                            with open(file_path, 'rb') as f:
-                                                files = {
-                                                    "imageBase64": (os.path.basename(file_path), f, "image/jpeg")
-                                                }
-                                                
-                                                # 合併表單資料和檔案
-                                                all_files = {**form_data, **files}
-                                                
-                                                logger.info("開始發送請求到伺服器")
-                                                response = requests.post(server_url, files=all_files)
-                                                
-                                                # 處理回應
-                                                if response.status_code == 200:
-                                                    try:
-                                                        response_data = response.json()
-                                                        if isinstance(response_data, dict) and response_data.get("message") == "Success!":
-                                                            logger.info("資料成功儲存到伺服器")
-                                                            st.success("資料成功儲存到伺服器！")
-                                                            
-                                                            # 更新 session state
-                                                            if 'saved_cards' not in st.session_state:
-                                                                st.session_state.saved_cards = []
-                                                            
-                                                            st.session_state.saved_cards.append({
-                                                                'name': name,
-                                                                'company_name': company,
-                                                                'title': title,
-                                                                'phone': phone,
-                                                                'mobile': mobile,
-                                                                'fax': fax,
-                                                                'email': email,
-                                                                'address': address,
-                                                                'website': website,
-                                                                'tax_id': tax_id,
-                                                                'other_info': other
-                                                            })
-                                                            
-                                                            # 重新整理頁面
-#st.experimental_rerun()
-                                                        else:
-                                                            logger.error(f"伺服器回應異常：{response_data}")
-                                                            st.error(f"伺服器回應異常：{response_data}")
-                                                    except json.JSONDecodeError:
-                                                        logger.error("伺服器回應格式錯誤")
-                                                        st.error("伺服器回應格式錯誤")
-                                                else:
-                                                    logger.error(f"伺服器錯誤：{response.status_code} - {response.text}")
-                                                    st.error(f"伺服器錯誤：{response.status_code} - {response.text}")
-                                        else:
-                                            logger.error("找不到上傳的檔案")
-                                            st.error("找不到上傳的檔案")
+                                        print(save_data)
 
+                                        
+                                        if not isinstance(st.session_state.saved_cards, list):
+                                            st.session_state.saved_cards = []
+
+                                        st.session_state.saved_cards.append(save_data)
+
+                                        logger.info(f"成功儲存名片資料: {save_data['name']}")
+                                        st.success("資料已成功儲存！")
                                     except Exception as e:
-                                        logger.error(f"處理資料時發生錯誤: {str(e)}", exc_info=True)
-                                        st.error(f"處理資料時發生錯誤: {str(e)}")
-                                        
-                                        # 確保錯誤訊息顯示後不會立即重新整理
-                                        st.stop()
-               
-
+                                        logger.error(f"儲存資料時發生錯誤: {str(e)}")
+                                        st.error("儲存資料失敗")
                     else:
                         logger.error("名片識別失敗")
                         st.error("識別失敗，請確認圖片品質後重試。")
@@ -396,7 +294,7 @@ elif choice == "歷史記錄":
 
 # 頁面底部
 st.markdown("---")
-st.markdown("### 使用說明")
+st.markdown("### �� 使用說明")
 st.markdown("""
 - 上傳名片圖片進行自動識別
 - 識別結果可以直接編輯
@@ -416,65 +314,3 @@ def handle_exceptions(func):
 
 # 應用程式啟動日誌
 logger.info("名片識別系統啟動完成")
-
-def save_to_server(data, file_path):
-    try:
-        # 建立 ContactPerson 物件
-        contact_person = ContactPerson(
-            name=data.get('name', ''),
-            email=data.get('email', ''),
-            landline_number=data.get('telephone', ''),
-            cellphone_number=data.get('mobile', ''),
-            address=data.get('address', '')
-        )
-
-        # 建立 Company 物件
-        company = Company(
-            name=data.get('company_name', ''),
-            tax=data.get('fax', ''),
-            tax_id_number=data.get('business_no', ''),
-            trade_method="Create"
-        )
-
-        # 設定伺服器 URL
-        server_url = "http://172.16.11.41:3333/api/business-partner"
-        
-        # 準備表單資料
-        form_data = {
-            "data": (None, json.dumps(company.to_dict()), "application/json"),
-            "contactPersons": (None, json.dumps([contact_person.to_dict()]), "application/json")
-        }
-
-        # 處理檔案上傳
-        with open(file_path, 'rb') as f:
-            files = {
-                "imageBase64": (os.path.basename(file_path), f, "image/jpeg")
-            }
-            
-            # 合併表單資料和檔案
-            all_files = {**form_data, **files}
-            
-            # 發送請求
-            response = requests.post(server_url, files=all_files)
-
-        # 處理回應
-        if response.status_code == 200:
-            try:
-                response_data = response.json()
-                if isinstance(response_data, dict) and response_data.get("message") == "Success!":
-                    st.success("資料成功儲存到伺服器！")
-                    return True
-                else:
-                    st.error(f"伺服器回應異常：{response_data}")
-                    return False
-            except json.JSONDecodeError:
-                st.error("伺服器回應格式錯誤")
-                return False
-        else:
-            st.error(f"伺服器錯誤：{response.status_code} - {response.text}")
-            return False
-
-    except Exception as e:
-        st.error(f"發生錯誤：{str(e)}")
-        logging.error(f"保存數據失敗: {str(e)}")
-        return False
