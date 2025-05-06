@@ -64,7 +64,7 @@ def save_uploaded_file(uploaded_file):
 
 
 # Gemini API 設置
-GOOGLE_API_KEY = "XXXXXXXXXXXXXXXXXXXXX"
+GOOGLE_API_KEY = "xxxxxxx"
 
 MODEL_ID = "gemini-2.0-flash"
 
