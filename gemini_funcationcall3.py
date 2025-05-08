@@ -2,7 +2,7 @@ from google import genai
 from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
 
 
-GOOGLE_API_KEY = ""
+GOOGLE_API_KEY = "AIzaSyDf9CJRd6CTp0qdjV6MvXPgFUhT2BQJ18s"
 # Configure the client and tools
 client = genai.Client(api_key=GOOGLE_API_KEY)
 
