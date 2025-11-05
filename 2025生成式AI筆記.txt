@@ -95,10 +95,7 @@ ai agent s
 https://medium.com/ai-cloud-lab/building-multi-agent-ai-app-with-googles-a2a-agent2agent-protocol-adk-and-mcp-a-deep-a94de2237200
 
 
-openai key=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
 
-openai-key
-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
 
 
 ai 平台
